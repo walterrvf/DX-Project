@@ -2661,6 +2661,11 @@ class MontagemWindow(ttk.Frame):
     def __init__(self, master):
         super().__init__(master)
         self.master = master
+
+        # Configura tema escuro e aplica estilos personalizados
+        self.style = ttk.Style("darkly")
+        self.style_config = load_style_config()
+        apply_style_config(self.style_config)
         
         # Inicializa o gerenciador de banco de dados
         # Usa caminho absoluto baseado na raiz do projeto
@@ -2798,203 +2803,174 @@ class MontagemWindow(ttk.Frame):
             self.status_var.set(f"Modelo: {model_name} - {len(self.slots)} slots")
     
     def setup_ui(self):
-        # Frame principal com layout horizontal de três painéis
+        """Monta o layout principal da janela de montagem."""
         main_frame = ttk.Frame(self)
         main_frame.pack(fill=BOTH, expand=True, padx=10, pady=10)
-        
-        # Painel esquerdo - Controles
-        left_panel = ttk.Frame(main_frame)
+
+        self._create_left_panel(main_frame)
+        self._create_center_panel(main_frame)
+        self._create_right_panel(main_frame)
+        self._create_status_bar()
+
+        self.show_default_right_panel()
+
+    def _create_left_panel(self, parent):
+        """Cria painel esquerdo com controles organizados em abas."""
+        left_panel = ttk.Frame(parent)
         left_panel.pack(side=LEFT, fill=Y, padx=(0, 10))
-        
-        # Painel central - Editor de malha (expandindo para preencher todo espaço restante)
-        center_panel = ttk.Frame(main_frame)
-        center_panel.pack(side=LEFT, fill=BOTH, expand=True)
-        
-        # Painel direito - Editor de slot
-        self.right_panel = ttk.Frame(main_frame, width=350)
-        self.right_panel.pack(side=RIGHT, fill=Y, padx=(10, 0), pady=10, expand=False)
-        self.right_panel.pack_propagate(False)  # Mantém largura fixa
-        
-        # === PAINEL ESQUERDO ===
-        
-        # Seção de Imagem
-        img_frame = ttk.LabelFrame(left_panel, text="Imagem")
+
+        control_nb = ttk.Notebook(left_panel, bootstyle="secondary")
+        control_nb.pack(fill=BOTH, expand=True)
+
+        input_tab = ttk.Frame(control_nb)
+        control_nb.add(input_tab, text="Entrada")
+
+        edit_tab = ttk.Frame(control_nb)
+        control_nb.add(edit_tab, text="Edição")
+
+        help_tab = ttk.Frame(control_nb)
+        control_nb.add(help_tab, text="Ajuda")
+
+        # === Seção de Imagem ===
+        img_frame = ttk.LabelFrame(input_tab, text="Imagem", bootstyle="secondary")
         img_frame.pack(fill=X, pady=(0, 10))
-        
-        self.btn_load_image = ttk.Button(img_frame, text="Carregar Imagem", 
-                                        command=self.load_image)
+        self.btn_load_image = ttk.Button(img_frame, text="Carregar Imagem",
+                                         command=self.load_image, bootstyle="secondary")
         self.btn_load_image.pack(fill=X, padx=5, pady=2)
-        
-        # Seção de Webcam
-        webcam_frame = ttk.LabelFrame(left_panel, text="Webcam")
+
+        # === Seção de Webcam ===
+        webcam_frame = ttk.LabelFrame(input_tab, text="Webcam", bootstyle="primary")
         webcam_frame.pack(fill=X, pady=(0, 10))
-        
-        # Combobox para seleção de câmera
         camera_selection_frame = ttk.Frame(webcam_frame)
         camera_selection_frame.pack(fill=X, padx=5, pady=2)
-        
         ttk.Label(camera_selection_frame, text="Câmera:").pack(side=LEFT)
-        self.camera_combo = Combobox(camera_selection_frame, 
-                                   values=[str(i) for i in self.available_cameras],
-                                   state="readonly", width=5)
+        self.camera_combo = Combobox(camera_selection_frame,
+                                    values=[str(i) for i in self.available_cameras],
+                                    state="readonly", width=5)
         self.camera_combo.pack(side=RIGHT)
         if self.available_cameras:
             self.camera_combo.set(str(self.available_cameras[0]))
-        
-        
-        # Botão de inspeção contínua removido
-        
-        # Botão de inspeção com enter removido
-        
-        # Botão para capturar imagem da webcam
-        self.btn_capture = ttk.Button(webcam_frame, text="Capturar Imagem", 
-                                     command=self.capture_from_webcam)
+        self.btn_capture = ttk.Button(webcam_frame, text="Capturar Imagem",
+                                      command=self.capture_from_webcam, bootstyle="primary")
         self.btn_capture.pack(fill=X, padx=5, pady=2)
-        
-        # Seção de Modelo
-        model_frame = ttk.LabelFrame(left_panel, text="Modelo")
+
+        # === Seção de Modelo ===
+        model_frame = ttk.LabelFrame(input_tab, text="Modelo", bootstyle="info")
         model_frame.pack(fill=X, pady=(0, 10))
-        
-        self.btn_load_model = ttk.Button(model_frame, text="Carregar Modelo", 
-                                        command=self.load_model_dialog)
+        self.btn_load_model = ttk.Button(model_frame, text="Carregar Modelo",
+                                         command=self.load_model_dialog, bootstyle="info")
         self.btn_load_model.pack(fill=X, padx=5, pady=2)
-        
-        self.btn_save_model = ttk.Button(model_frame, text="Salvar Modelo", 
-                                        command=self.save_model)
+        self.btn_save_model = ttk.Button(model_frame, text="Salvar Modelo",
+                                         command=self.save_model, bootstyle="success")
         self.btn_save_model.pack(fill=X, padx=5, pady=2)
-        
-        # Seção de Ferramentas de Edição
-        tools_frame = ttk.LabelFrame(left_panel, text="Ferramentas de Edição")
+
+        # === Ferramentas de Edição ===
+        tools_frame = ttk.LabelFrame(edit_tab, text="Ferramentas de Edição", bootstyle="secondary")
         tools_frame.pack(fill=X, pady=(0, 10))
-        
-        # Modo de desenho
         mode_frame = ttk.Frame(tools_frame)
         mode_frame.pack(fill=X, padx=5, pady=5)
-        
         ttk.Label(mode_frame, text="Modo de Desenho:").pack(anchor="w")
-        
         self.drawing_mode = StringVar(value="rectangle")
-        
         mode_buttons_frame = ttk.Frame(mode_frame)
         mode_buttons_frame.pack(fill=X, pady=2)
-        
-        # Configurando estilo para os botões de rádio com fundo escuro
-        self.style = ttk.Style()
-        self.style.configure("TRadiobutton", background="#1E1E1E", foreground="white")
-        # Configurando mapeamento para garantir que o fundo permaneça escuro em todos os estados
+        self.style.configure("TRadiobutton",
+                             background=self.style_config["background_color"],
+                             foreground=self.style_config["text_color"])
         self.style.map("TRadiobutton",
-                      background=[('active', '#1E1E1E'), ('selected', '#1E1E1E')],
-                      foreground=[('active', 'white'), ('selected', 'white')])
-        
-        self.btn_rect_mode = ttk.Radiobutton(mode_buttons_frame, text="Retângulo", 
-                                           variable=self.drawing_mode, value="rectangle",
-                                           command=self.set_drawing_mode,
-                                           style="TRadiobutton")
+                       background=[('active', self.style_config["background_color"]),
+                                   ('selected', self.style_config["background_color"])],
+                       foreground=[('active', self.style_config["text_color"]),
+                                   ('selected', self.style_config["text_color"])])
+        self.btn_rect_mode = ttk.Radiobutton(mode_buttons_frame, text="Retângulo",
+                                             variable=self.drawing_mode, value="rectangle",
+                                             command=self.set_drawing_mode,
+                                             style="TRadiobutton")
         self.btn_rect_mode.pack(side=LEFT, padx=(0, 5))
-        
-        self.btn_exclusion_mode = ttk.Radiobutton(mode_buttons_frame, text="Exclusão", 
-                                                variable=self.drawing_mode, value="exclusion",
-                                                command=self.set_drawing_mode,
-                                                style="TRadiobutton")
+        self.btn_exclusion_mode = ttk.Radiobutton(mode_buttons_frame, text="Exclusão",
+                                                  variable=self.drawing_mode, value="exclusion",
+                                                  command=self.set_drawing_mode,
+                                                  style="TRadiobutton")
         self.btn_exclusion_mode.pack(side=LEFT)
-        
-        # Controles de rotação removidos
-        
-        # Status da ferramenta
         self.tool_status_var = StringVar(value="Modo: Retângulo")
-        ttk.Label(tools_frame, textvariable=self.tool_status_var, 
-                 font=("Arial", 8), foreground="#666").pack(padx=5, pady=(0, 5))
-        
-        # Seção de Slots
-        slots_frame = ttk.LabelFrame(left_panel, text="Slots")
+        ttk.Label(tools_frame, textvariable=self.tool_status_var,
+                  font=("Arial", 8),
+                  foreground=self.style_config["text_color"]).pack(padx=5, pady=(0, 5))
+
+        # === Slots ===
+        slots_frame = ttk.LabelFrame(edit_tab, text="Slots", bootstyle="primary")
         slots_frame.pack(fill=X, pady=(0, 10))
-        
-        self.btn_clear_slots = ttk.Button(slots_frame, text="Limpar Todos os Slots", 
-                                         command=self.clear_slots)
+        self.btn_clear_slots = ttk.Button(slots_frame, text="Limpar Todos os Slots",
+                                          command=self.clear_slots, bootstyle="warning")
         self.btn_clear_slots.pack(fill=X, padx=5, pady=2)
-        
-        # Botão de editar slot removido - editor aparece automaticamente quando slot é selecionado
-        
-        self.btn_delete_slot = ttk.Button(slots_frame, text="Deletar Slot Selecionado", 
-                                         command=self.delete_selected_slot)
+        self.btn_delete_slot = ttk.Button(slots_frame, text="Deletar Slot Selecionado",
+                                          command=self.delete_selected_slot, bootstyle="danger")
         self.btn_delete_slot.pack(fill=X, padx=5, pady=2)
-        
-        self.btn_train_slot = ttk.Button(slots_frame, text="Treinar Slot Selecionado", 
-                                        command=self.train_selected_slot)
+        self.btn_train_slot = ttk.Button(slots_frame, text="Treinar Slot Selecionado",
+                                         command=self.train_selected_slot, bootstyle="success")
         self.btn_train_slot.pack(fill=X, padx=5, pady=2)
-        
-        # Informações dos slots (substituindo a lista visual)
-        self.slot_info_frame = ttk.LabelFrame(slots_frame, text="Informações do Slot Selecionado")
+        self.slot_info_frame = ttk.LabelFrame(slots_frame, text="Informações do Slot Selecionado", bootstyle="primary")
         self.slot_info_frame.pack(fill=X, padx=5, pady=5)
-        
-        # Label para mostrar informações do slot selecionado
-        self.slot_info_label = ttk.Label(self.slot_info_frame, text="Nenhum slot selecionado", justify=LEFT)
+        self.slot_info_label = ttk.Label(self.slot_info_frame, text="Nenhum slot selecionado",
+                                         justify=LEFT)
         self.slot_info_label.pack(fill=X, padx=5, pady=5)
-        
-        # Seção de Ajuda
-        help_frame = ttk.LabelFrame(left_panel, text="Ajuda")
-        help_frame.pack(fill=X, pady=(0, 10))
-        
-        self.btn_help = ttk.Button(help_frame, text="Mostrar Ajuda", 
-                                  command=self.show_help)
+
+        # === Ajuda ===
+        help_frame = ttk.LabelFrame(help_tab, text="Ajuda", bootstyle="info")
+        help_frame.pack(fill=BOTH, expand=True, pady=(0, 10))
+        self.btn_help = ttk.Button(help_frame, text="Mostrar Ajuda",
+                                   command=self.show_help, bootstyle="info")
         self.btn_help.pack(fill=X, padx=5, pady=5)
-        
-        # Botão de configurações com ícone de engrenagem
-        self.btn_config = ttk.Button(help_frame, text="⚙️ Configurações do Sistema", 
-                                    command=self.open_system_config)
+        self.btn_config = ttk.Button(help_frame, text="⚙️ Configurações do Sistema",
+                                     command=self.open_system_config, bootstyle="secondary")
         self.btn_config.pack(fill=X, padx=5, pady=(0, 5))
-        
-        # === PAINEL CENTRAL - Editor de Malha ===
-        
-        # Canvas com scrollbars
-        canvas_frame = ttk.LabelFrame(center_panel, text="Editor de Malha")
+
+    def _create_center_panel(self, parent):
+        """Cria o painel central com o canvas de edição."""
+        center_panel = ttk.Frame(parent)
+        center_panel.pack(side=LEFT, fill=BOTH, expand=True)
+
+        canvas_frame = ttk.LabelFrame(center_panel, text="Editor de Malha", bootstyle="info")
         canvas_frame.pack(fill=BOTH, expand=True)
-        
-        # Frame para canvas e scrollbars
+
         canvas_container = ttk.Frame(canvas_frame)
         canvas_container.pack(fill=BOTH, expand=True, padx=5, pady=5)
-        
-        # Scrollbars
+
         v_scrollbar = ttk.Scrollbar(canvas_container, orient=VERTICAL)
         v_scrollbar.pack(side=RIGHT, fill=Y)
-        
         h_scrollbar = ttk.Scrollbar(canvas_container, orient=HORIZONTAL)
         h_scrollbar.pack(side=BOTTOM, fill=X)
-        
-        # Canvas
-        self.canvas = Canvas(canvas_container, bg="#2C3E50",  # Cor de fundo alterada
-                           yscrollcommand=v_scrollbar.set,
-                           xscrollcommand=h_scrollbar.set)
+
+        self.canvas = Canvas(canvas_container, bg=self.style_config["background_color"],
+                             yscrollcommand=v_scrollbar.set,
+                             xscrollcommand=h_scrollbar.set)
         self.canvas.pack(side=LEFT, fill=BOTH, expand=True)
-        
-        # Configurar scrollbars
         v_scrollbar.config(command=self.canvas.yview)
         h_scrollbar.config(command=self.canvas.xview)
-        
-        # Binds do canvas
+
         self.canvas.bind("<Button-1>", self.on_canvas_press)
         self.canvas.bind("<B1-Motion>", self.on_canvas_drag)
         self.canvas.bind("<ButtonRelease-1>", self.on_canvas_release)
-        
-        # Binds para zoom e pan
         self.canvas.bind("<MouseWheel>", self.on_canvas_zoom)
-        self.canvas.bind("<Button-2>", self.on_canvas_pan_start)  # Botão do meio
+        self.canvas.bind("<Button-2>", self.on_canvas_pan_start)
         self.canvas.bind("<B2-Motion>", self.on_canvas_pan_drag)
         self.canvas.bind("<ButtonRelease-2>", self.on_canvas_pan_end)
-        
-        # Variáveis para zoom e pan
+
         self.zoom_level = 1.0
         self.pan_start_x = 0
         self.pan_start_y = 0
-        
-        # Status bar
+
+    def _create_right_panel(self, parent):
+        """Cria o painel direito usado para edição de slots."""
+        self.right_panel = ttk.Frame(parent, width=350)
+        self.right_panel.pack(side=RIGHT, fill=Y, padx=(10, 0), pady=10, expand=False)
+        self.right_panel.pack_propagate(False)
+
+    def _create_status_bar(self):
+        """Cria a barra de status inferior."""
         self.status_var = StringVar()
         self.status_var.set("Carregue uma imagem para começar")
         status_bar = ttk.Label(self, textvariable=self.status_var, relief="sunken")
         status_bar.pack(side=BOTTOM, fill=X, padx=5, pady=2)
-        
-        # Inicializa o painel direito com mensagem padrão
-        self.show_default_right_panel()
 
     def toggle_live_capture_manual_inspection(self):
         """Alterna o modo de captura contínua com inspeção manual (ativada pelo Enter)."""
